@@ -1,6 +1,10 @@
 import React from "react";
+import { Link, useLocation } from "react-router-dom";
 
 const Footer = () => {
+  const location = useLocation();
+  const isHomePage = location.pathname === '/';
+
   return (
     <footer className="bg-[#0C1E35] text-white pt-16 pb-6">
       <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 sm:grid-cols-3 gap-10">
@@ -17,10 +21,24 @@ const Footer = () => {
         <div>
           <h4 className="text-lg font-semibold mb-3">Quick Links</h4>
           <ul className="space-y-2 text-gray-300">
-            <li><a href="#home" className="hover:text-white">Home</a></li>
-            <li><a href="#projects" className="hover:text-white">Projects</a></li>
-            <li><a href="#whyus" className="hover:text-white">Why Choose Us</a></li>
-            <li><a href="#about" className="hover:text-white">About Us</a></li>
+            <li>
+              <Link to="/" className="hover:text-white">Home</Link>
+            </li>
+            <li>
+              <Link to="/projects" className="hover:text-white">Projects</Link>
+            </li>
+            <li>
+              <Link to={isHomePage ? "#whyus" : "/about"} className="hover:text-white">Why Choose Us</Link>
+            </li>
+            <li>
+              <Link to="/about" className="hover:text-white">About Us</Link>
+            </li>
+            <li>
+              <Link to="/services" className="hover:text-white">Services</Link>
+            </li>
+            <li>
+              <Link to="/contact" className="hover:text-white">Contact</Link>
+            </li>
           </ul>
         </div>
 

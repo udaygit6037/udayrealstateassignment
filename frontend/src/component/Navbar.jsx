@@ -1,13 +1,15 @@
-import React, { useState } from 'react';
-import { Menu, X, Home, Briefcase, Info, Star, Mail } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { Menu, X, Home, Briefcase, Info, Star, LogIn, User } from 'lucide-react';
+import { isAuthenticated } from '../services/authService.js';
 
 // Data Definition: Keeping the navigation links outside of the component
 // ensures this static data is not recreated on every render.
 const navLinks = [
-  { name: 'HOME', href: '#home', icon: Home },
-  { name: 'SERVICES', href: '#services', icon: Briefcase },
-  { name: 'ABOUT US', href: '#about', icon: Info },
-  { name: 'TESTIMONIALS', href: '#testimonials', icon: Star },
+  { name: 'HOME', path: '/', icon: Home },
+  { name: 'SERVICES', path: '/services', icon: Briefcase },
+  { name: 'ABOUT US', path: '/about', icon: Info },
+  { name: 'PROJECTS', path: '/projects', icon: Star },
 ];
 
 /**
@@ -17,11 +19,44 @@ const navLinks = [
 const Navbar = () => {
   // State to handle the mobile menu visibility
   const [isOpen, setIsOpen] = useState(false);
+  const [authenticated, setAuthenticated] = useState(false);
+  const location = useLocation();
+
+  // Check authentication status
+  useEffect(() => {
+    const checkAuth = () => {
+      setAuthenticated(isAuthenticated());
+    };
+    
+    // Check immediately
+    checkAuth();
+    
+    // Listen for storage changes (when user logs in/out in another tab or same tab)
+    const handleAuthChange = () => {
+      checkAuth();
+    };
+    
+    // Listen for custom storage event (for same-tab logout)
+    window.addEventListener('storage', handleAuthChange);
+    window.addEventListener('auth-change', handleAuthChange);
+    
+    // Also check on route changes
+    const interval = setInterval(checkAuth, 1000);
+    
+    return () => {
+      window.removeEventListener('storage', handleAuthChange);
+      window.removeEventListener('auth-change', handleAuthChange);
+      clearInterval(interval);
+    };
+  }, [location]);
 
   // Function to toggle the mobile menu
   const toggleMenu = () => {
     setIsOpen(!isOpen);
   };
+
+  // Check if we're on homepage for anchor links
+  const isHomePage = location.pathname === '/';
 
   return (
     <nav className="bg-white shadow-md fixed w-full z-10 border-b border-gray-200">
@@ -30,27 +65,60 @@ const Navbar = () => {
 
           {/* Brand/Logo Section */}
           <div className="flex-shrink-0 flex items-center">
-           <img src="./logo.svg" alt="logo" />
+            <Link to="/">
+              <img src="./logo.svg" alt="logo" />
+            </Link>
           </div>
 
           {/* Desktop Links and Contact Button */}
           <div className="hidden lg:flex lg:items-center lg:space-x-6">
             {navLinks.map((link) => (
-              <a
+              <Link
                 key={link.name}
-                href={link.href}
+                to={isHomePage && link.path === '/' ? '#home' : link.path}
+                onClick={() => {
+                  if (isHomePage && link.path === '/') {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }
+                }}
                 className="text-gray-600 hover:text-blue-600 px-3 py-2 text-sm font-medium transition duration-150 uppercase tracking-wide"
               >
                 {link.name}
-              </a>
+              </Link>
             ))}
             {/* Contact Button */}
-            <a
-              href="#contact"
+            <Link
+              to={isHomePage ? '#contact' : '/contact'}
+              onClick={() => {
+                if (isHomePage) {
+                  const contactSection = document.getElementById('contact');
+                  if (contactSection) {
+                    contactSection.scrollIntoView({ behavior: 'smooth' });
+                  }
+                }
+              }}
               className="ml-4 bg-orange-500 hover:bg-orange-600 text-white px-5 py-2 rounded-md text-sm font-medium transition duration-150 uppercase shadow-md"
             >
               CONTACT
-            </a>
+            </Link>
+            {/* Login/Admin Button */}
+            {authenticated ? (
+              <Link
+                to="/admin"
+                className="ml-4 flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-5 py-2 rounded-md text-sm font-medium transition duration-150 uppercase shadow-md"
+              >
+                <User className="w-4 h-4" />
+                ADMIN
+              </Link>
+            ) : (
+              <Link
+                to="/admin/login"
+                className="ml-4 flex items-center gap-2 bg-gray-600 hover:bg-gray-700 text-white px-5 py-2 rounded-md text-sm font-medium transition duration-150 uppercase shadow-md"
+              >
+                <LogIn className="w-4 h-4" />
+                LOGIN
+              </Link>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -80,24 +148,57 @@ const Navbar = () => {
       >
         <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
           {navLinks.map((link) => (
-            <a
+            <Link
               key={link.name}
-              href={link.href}
-              onClick={toggleMenu}
+              to={isHomePage && link.path === '/' ? '#home' : link.path}
+              onClick={() => {
+                toggleMenu();
+                if (isHomePage && link.path === '/') {
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+              }}
               className="text-gray-700 hover:bg-gray-50 hover:text-blue-600 block px-3 py-2 rounded-md text-base font-medium flex items-center space-x-2 transition duration-150 uppercase"
             >
               <link.icon className="h-5 w-5 text-gray-500" />
               <span>{link.name}</span>
-            </a>
+            </Link>
           ))}
           {/* Mobile Contact Button */}
-          <a
-            href="#contact"
-            onClick={toggleMenu}
+          <Link
+            to={isHomePage ? '#contact' : '/contact'}
+            onClick={() => {
+              toggleMenu();
+              if (isHomePage) {
+                const contactSection = document.getElementById('contact');
+                if (contactSection) {
+                  contactSection.scrollIntoView({ behavior: 'smooth' });
+                }
+              }
+            }}
             className="w-full text-center mt-3 block bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded-md transition duration-150 shadow-md uppercase"
           >
             CONTACT
-          </a>
+          </Link>
+          {/* Mobile Login/Admin Button */}
+          {authenticated ? (
+            <Link
+              to="/admin"
+              onClick={toggleMenu}
+              className="w-full text-center mt-3 flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-md transition duration-150 shadow-md uppercase"
+            >
+              <User className="w-4 h-4" />
+              ADMIN PANEL
+            </Link>
+          ) : (
+            <Link
+              to="/admin/login"
+              onClick={toggleMenu}
+              className="w-full text-center mt-3 flex items-center justify-center gap-2 bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-md transition duration-150 shadow-md uppercase"
+            >
+              <LogIn className="w-4 h-4" />
+              LOGIN
+            </Link>
+          )}
         </div>
       </div>
     </nav>

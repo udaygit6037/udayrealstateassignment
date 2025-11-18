@@ -1,11 +1,7 @@
 // src/components/ProtectedRoute.jsx
 import React from 'react';
 import { Navigate } from 'react-router-dom';
-
-const isAuthenticated = () => {
-  const token = localStorage.getItem('rt_token');
-  return !!token;
-};
+import { isAuthenticated } from '../services/authService.js';
 
 const ProtectedRoute = ({ children }) => {
   if (!isAuthenticated()) {

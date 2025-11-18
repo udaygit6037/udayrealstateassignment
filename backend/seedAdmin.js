@@ -10,17 +10,15 @@ import Admin from './models/Admin.js';
 const { genSalt, hash } = bcrypt;
 
 // Use MONGODB_URI or MONGO_URI for better compatibility
-const MONGODB_URI = process.env.MONGODB_URI || process.env.MONGO_URI;
-
-if (!MONGODB_URI) {
-  console.error("❌ MONGODB_URI/MONGO_URI missing in .env");
-  process.exit(1);
-}
+const MONGODB_URI =
+  process.env.MONGODB_URI ||
+  process.env.MONGO_URI ||
+  'mongodb://127.0.0.1:27017/REALTRUST';
 
 async function seed() {
   try {
     // Note: Mongoose 6+ connects without the need for options object
-   await mongoose.connect(`${process.env.MONGODB_URI}/REALTRUST`);
+    await mongoose.connect(MONGODB_URI);
     console.log('✅ Connected to DB');
 
     const email = process.env.ADMIN_EMAIL;

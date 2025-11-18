@@ -6,21 +6,23 @@ import mongoose from 'mongoose';
  * Connects to MongoDB using the URI from environment variables or a local fallback.
  */
 const connectDB = async () => {
-    // Check for both common environment variable names
-
-
-
+    const uri =
+        process.env.MONGODB_URI ||
+        process.env.MONGO_URI ||
+        'mongodb://127.0.0.1:27017/REALTRUST';
 
     try {
-        // Mongoose 6+ discourages passing the options object as useNewUrlParser and 
-        // useUnifiedTopology are true by default and deprecated.
-        await mongoose.connect(`${process.env.MONGODB_URI}/REALTRUST`);
+        console.log('🔌 Connecting to MongoDB...');
+        console.log('📍 Database URI:', uri.replace(/\/\/([^:]+):([^@]+)@/, '//***:***@')); // Hide credentials in logs
         
+        await mongoose.connect(uri);
         console.log('✅ MongoDB connection successful!');
+        console.log('📊 Database:', mongoose.connection.db.databaseName);
+        console.log('🔗 Connection state:', mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected');
     } catch (err) {
-        // Log the full error message and exit the application
         console.error('❌ MongoDB connection FAILED:', err.message);
-        process.exit(1); 
+        console.error('Full error:', err);
+        process.exit(1);
     }
 };
 

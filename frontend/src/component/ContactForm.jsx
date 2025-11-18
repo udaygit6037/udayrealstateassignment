@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { submitContact } from '../services/contactService.js';
 
 const ContactForm = () => {
   const [formData, setFormData] = useState({
@@ -6,17 +7,31 @@ const ContactForm = () => {
     email: '',
     mobile: '',
     city: '',
+    message: '',
   });
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Contact Form Submitted:', formData);
-    // In a real application, you would send this data to the backend here.
-    alert('Form submitted! Check console for data.');
+    setLoading(true);
+    setSuccess(false);
+    
+    try {
+      await submitContact(formData);
+      setSuccess(true);
+      setFormData({ fullName: '', email: '', mobile: '', city: '', message: '' });
+      setTimeout(() => setSuccess(false), 5000);
+    } catch (err) {
+      console.error('Contact form error:', err);
+      alert(err?.response?.data?.error || 'Failed to submit form. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const inputClass = "w-full px-4 py-2 bg-gray-700 text-white placeholder-gray-400 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition duration-150";
@@ -26,6 +41,11 @@ const ContactForm = () => {
       <h3 className="text-2xl font-bold text-white mb-6 text-center">
         Get A Free Consultation
       </h3>
+      {success && (
+        <div className="mb-4 p-3 bg-green-500 text-white rounded-md text-sm text-center">
+          Thank you! We'll contact you soon.
+        </div>
+      )}
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <input
@@ -36,6 +56,7 @@ const ContactForm = () => {
             onChange={handleChange}
             className={inputClass}
             required
+            disabled={loading}
           />
         </div>
         <div>
@@ -47,6 +68,7 @@ const ContactForm = () => {
             onChange={handleChange}
             className={inputClass}
             required
+            disabled={loading}
           />
         </div>
         <div>
@@ -58,6 +80,7 @@ const ContactForm = () => {
             onChange={handleChange}
             className={inputClass}
             required
+            disabled={loading}
           />
         </div>
         <div>
@@ -69,13 +92,26 @@ const ContactForm = () => {
             onChange={handleChange}
             className={inputClass}
             required
+            disabled={loading}
+          />
+        </div>
+        <div>
+          <textarea
+            name="message"
+            placeholder="Message (Optional)"
+            value={formData.message}
+            onChange={handleChange}
+            rows="3"
+            className={inputClass}
+            disabled={loading}
           />
         </div>
         <button
           type="submit"
-          className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 rounded-md transition duration-150 uppercase shadow-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-gray-800"
+          disabled={loading}
+          className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-orange-400 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-md transition duration-150 uppercase shadow-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-gray-800"
         >
-          Get Quick Quote
+          {loading ? 'Submitting...' : 'Get Quick Quote'}
         </button>
       </form>
     </div>

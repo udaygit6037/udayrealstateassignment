@@ -3,88 +3,104 @@
 import 'dotenv/config'; // ESM way to load dotenv at the start
 import express from 'express';
 import cors from 'cors';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+import mongoose from 'mongoose';
 
-// --- NEW IMPORTS (Note the .js extension for local files) ---
-import connectDB from './lib/db.js'; // Default import
-import Subscriber from './models/Subscriber.js';
-import Project from './models/Project.js';
-import Admin from './models/Admin.js';
+// --- IMPORTS ---
+import connectDB from './lib/db.js';
 import auth from './middleware/auth.js';
 
+// Controllers
+import * as projectController from './controllers/projectController.js';
+import * as subscriberController from './controllers/subscriberController.js';
+import * as contactController from './controllers/contactController.js';
+import * as authController from './controllers/authController.js';
+
 // Connect to MongoDB
-connectDB(); // Execute the connection function
+connectDB();
 
 const app = express();
-app.use(cors());
+app.use(cors({
+    origin: "http://localhost:5173",  // Vite's default port
+    credentials: true
+}));
 app.use(express.json());
 
+// --- Public Routes ---
 
-// --- Subscriber route ---
-app.post('/api/subscribe', async (req, res) => {
+// Projects
+app.get('/api/projects', projectController.getProjects);
+app.get('/api/projects/:id', projectController.getProject);
+
+// Subscribers
+app.post('/api/subscribe', subscriberController.subscribe);
+
+// Contact
+app.post('/api/contact', contactController.submitContact);
+
+// Auth
+app.post('/api/admin/login', authController.loginAdmin);
+
+// --- Protected Routes (Admin Only) ---
+
+// Projects
+app.post('/api/projects', auth, projectController.createProject);
+app.put('/api/projects/:id', auth, projectController.updateProject);
+app.delete('/api/projects/:id', auth, projectController.deleteProject);
+
+// Subscribers
+app.get('/api/subscribers', auth, subscriberController.getSubscribers);
+app.delete('/api/subscribers/:id', auth, subscriberController.deleteSubscriber);
+
+// Contacts
+app.get('/api/contacts', auth, contactController.getContacts);
+app.get('/api/contacts/:id', auth, contactController.getContact);
+app.delete('/api/contacts/:id', auth, contactController.deleteContact);
+
+// Auth verification
+app.get('/api/admin/verify', auth, authController.verifyToken);
+
+// Test route to check database connection and collections
+app.get('/api/test/db', async (req, res) => {
     try {
-        const { email } = req.body;
-        if (!email) return res.status(400).json({ error: 'Email is required' });
-        const existing = await Subscriber.findOne({ email });
-        if (existing) return res.status(400).json({ error: 'Email already subscribed' });
-        const sub = new Subscriber({ email });
-        await sub.save();
-        return res.json({ message: 'Subscribed successfully' });
-    } catch (err) {
-        console.error(err);
-        return res.status(500).json({ error: 'Server error' });
-    }
-});
-
-// --- Public: GET projects ---
-app.get('/api/projects', async (req, res) => {
-    try {
-        // Note: .default is removed as models are now imported directly
-        const projects = await Project.find().sort({ _id: 1 }); 
-        return res.json({ projects });
-    } catch (err) {
-        console.error(err);
-        return res.status(500).json({ error: 'Server error' });
-    }
-});
-
-// --- Protected: create project (admin only) ---
-app.post('/api/projects', auth, async (req, res) => {
-    try {
-        const { title, description, imageUrl } = req.body;
-        if (!title) return res.status(400).json({ error: 'Title is required' });
-        const p = new Project({ title, description, imageUrl });
-        await p.save();
-        return res.json({ project: p });
-    } catch (err) {
-        console.error(err);
-        return res.status(500).json({ error: 'Server error' });
-    }
-});
-
-// --- Admin login ---
-app.post('/api/admin/login', async (req, res) => {
-    try {
-        const { email, password } = req.body;
-        if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
-
-        const admin = await Admin.findOne({ email });
-        if (!admin) return res.status(401).json({ error: 'Invalid credentials' });
-
-        const isMatch = await bcrypt.compare(password, admin.passwordHash);
-        if (!isMatch) return res.status(401).json({ error: 'Invalid credentials' });
-
-        const token = jwt.sign({ id: admin._id, email: admin.email }, process.env.JWT_SECRET, {
-            expiresIn: process.env.JWT_EXPIRES_IN || '8h'
+        if (mongoose.connection.readyState !== 1) {
+            return res.status(503).json({
+                connected: false,
+                error: 'Database not connected',
+                readyState: mongoose.connection.readyState
+            });
+        }
+        
+        const db = mongoose.connection.db;
+        const collections = await db.listCollections().toArray();
+        const collectionNames = collections.map(c => c.name);
+        
+        // Get counts for each collection
+        const counts = {};
+        for (const name of collectionNames) {
+            try {
+                counts[name] = await db.collection(name).countDocuments();
+            } catch (err) {
+                counts[name] = 'error: ' + err.message;
+            }
+        }
+        
+        return res.json({
+            connected: true,
+            database: db.databaseName,
+            collections: collectionNames,
+            counts: counts,
+            message: 'Database connection is working'
         });
-
-        return res.json({ token, admin: { email: admin.email } });
     } catch (err) {
-        console.error(err);
-        return res.status(500).json({ error: 'Server error' });
+        return res.status(500).json({ 
+            error: 'Database test failed', 
+            message: err.message 
+        });
     }
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+    console.log(`📡 API endpoints available at http://localhost:${PORT}/api`);
+});
